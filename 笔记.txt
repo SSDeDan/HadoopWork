@@ -1,0 +1,272 @@
+Hadoop
+---------------------------------------------------
+Xshell   SecureCRT   Putty    Mobaxterm
+
+/opt/softwares
+/opt/links
+/home/kevin/bigdata
+
+数据：
+	结构化数据：20%；
+	非结构化数据：80%；
+		半结构化数据：
+		完全非结构化数据：
+Hadoop的生态圈：
+	广义：
+	狭义：hadoop程序；common【核心】，hdfs、MR、yarn
+
+
+集群搭建：
+------------------------------
+1.环境
+	bt1 Ubuntu 16.04桌面版		1.0.0.131	主节点
+	bt2 Ubuntu 16.04服务器版	1.0.0.132	从节点
+	bt3 Ubuntu 16.04服务器版	1.0.0.133	从节点
+
+	hadoop 2.9.2
+	jdk 8u221
+
+2.集群分类：
+	1.全分布式：
+	2.伪分布式：
+	3.单机模式：
+
+3.集群搭建【全分布式】：
+	0.所有节点上的配置都一模一样；
+	1.安装JDK；配置环境变量；测试；
+	2.安装hadoop；配置环境变量；测试；
+	3.集群搭建：
+		1.$HADOOP_HOME/etc/hadoop/hadoop-env.sh
+		2.core-site.xml
+		3.hdfs-site.xml
+		4.mapred-site.xml
+		5.slaves
+	4.启动集群：
+		1.格式化HDFS集群，只在主节点上执行；
+		2.hadoop-daemon.sh start namenode启动主节点；
+
+	5.免密登录，一键启动；
+		start-dfs.sh
+		start-yarn.sh
+
+		start-all.sh
+
+	6.可能会碰到的问题：
+		1.用户名都一致；
+		2.IP地址和主机名；
+		3.固定IP；
+			1.Ubuntu 16.10-：/etc/network/interfaces
+			2.Ubuntu 17.04+：/etc/netplain/xx-xx-xx.yaml
+
+4.免密登录：
+	1.eval "$(ssh-agent -s)"
+	2.ssh-add
+
+4.HDFS集群的命令操作：
+	0.HDFS集群，在下列命令前加上hdfs dfs
+	1.put：上传文件
+		put 本地源文件 集群文件路径
+	2.ls：列出集群文件的详细信息
+	3.mkdir：创建目录
+		1.HDFS集群中的用户的家目录在 /user/用户名
+		2.在HDFS集群中没有当前目录的概念，有家目录的概念，如果一个路径被表示为空，此路径就表示家目录路径；.也表示家目录；
+	4.get：从集群上下载文件到本地；
+		get 集群文件路径   本地文件路径
+
+	5.cp：复制文件；集群到集群的复制；跨集群复制；
+		hdfs dfs -cp /passwd ./a.txt
+
+	6.mv 移动文件；
+
+	7.rm 删除文件；
+
+	8.cat 查看文件内容；只能查看文本文件内容；
+
+	9.text 查看文本文件的内容，但是该命令能够查看被压缩之后的文本文件的内容；
+
+	10.chmod 
+
+	11.chown
+
+5.基于Java的HDFS编程
+	1.put
+	2.get
+
+
+Hadoop IO
+-------------------------------------------------
+1.Hadoop中的压缩和解压缩
+
+2.序列化
+ org.apache.hadoop.io.Writable接口：
+ 	readFileds(DataInput di); 反序列化
+	write(DataOutput dot); 序列化
+
+3.序列文件：SequenceFile
+	1.二进制文件；
+	2.内容由K和V组成，由于K和V都是对象，所以该文件是二进制文件；
+	3.为了解决将N多的小文件存储到HDFS集群中；
+	4.K和V必须要序列化；
+
+练习：专利数据；
+	cite75_99.txt
+
+	1,2
+	1,3
+	2,4
+	2,5
+	3,5
+
+	1.计算每个专利被引用的次数；
+	2.计算每个专利都引用了哪些专利；
+
+练习：利用序列文件进行数据的备份和恢复；
+
+MapReduce编程
+---------------------------------------------------
+1.Map任务一次处理一行数据；
+2.Reduce任务一次处理一组数据；
+3.在MapReduce处理数据的过程，所有输入的Key都不能相同；
+4.概念：
+	1.分块：在HDFS中，将一个大的数据按照dfs.blocksize分割成小的数据块；
+	2.分片：在MapReduce编程框架中，由一个Map任务所处理的所有数据称之为数据分片【Split】；一般把一个数据分块近似的认为一个数据分片，因为一个数据分片中的数据不可能完全来自于一个数据块；
+
+	MR框架的Shuffle阶段：
+	3.分区【在Map端执行】：默认根据k2的哈希值对数据进行分区，决定数据应该进入那个Reduce；
+		int reduceIndex=hashCode(k2)%reduceNum;
+			k2				reduceNum 2
+			1					1
+			2					0
+			3					1
+			4					0
+			5					1
+
+	4.分组【在Reduce端执行】：将所有k2相同的v2分到同一组形成一个集合【进入Reduce任务的value】；
+
+	5.排序【在Reduce阶段执行】：决定Reduce应该先处理哪一组数据，根据进入Reduce的k2的哈希值进行排序；
+
+MapReduce程序的优化：使用Combiner
+	1.Combiner的主要作用是在Map端计算完成之后，预先执行和Reduce逻辑类似的任务；
+	2.Combiner本质上就是Reducer；如果程序中编写的Reducer的逻辑符合Combiner的逻辑，则该Reducer可以直接作为Combiner来使用，不需要额外定义Combiner类；否则，需要自定义Combiner类；
+	3.MR程序中是否加入Combiner不能影响Map任务到Reduce任务的数据传输；不管什么样的情况下，Map任务输出的K2和V2的数据类型一定要和Reduce端数据的k和v的数据类型一致；
+	4.Combiner的输入key和value的数据类型一定和Combiner输出的key和value的数据类型一致；
+
+	练习：计算1992年每个气象站的平均气温；
+	020199999999999	58.14666666666667
+
+	Reduce input records=1087517
+
+	练习：选取数据最小的五年的数据使用MR程序生成两个数据集：
+		1.文本文件：
+			year	sid		temp
+
+		2.序列文件：
+			year	sid		temp
+
+
+1.使用KeyValueTextInputFormat读取原始的专利数据；
+	专利编号		被引用的专利编号
+
+2.将以上数据交给第一个InverseMapper;
+	被引用的专利编号		专利编号
+
+3.将以上数据交给：TokenCounterMapper
+
+4.将以上数据交给IntSumReducer；
+
+5.将以上数据交给InverseMapper；
+
+
+MR中的排序：
+-------------------------------
+1.局部排序：默认就是局部排序；
+2.全局排序【控制分区阶段】：
+	1.不能再使用哈希值分区；TotalOrderPartitioner
+	2.进行随机抽样，获取临界数据；
+	3.存在的问题：
+		1.当输入的数据是文本数据时，Map阶段的k1和k2的数据类型都必须是LongWritable；全局排序要求Map输入的Key和输出的Key相同；
+		2.如果按照上述修改之后，对文本文件进行排序，虽然设置了多个Reduce，但只有一个Reduce在工作；
+	4.先将原始数据集转化成序列文件，再做全局排序；
+
+3.二次排序：
+	1.将需要排序的数据自定义为某种数据类型形成复合键，把优先参与排序的字段称之为自然键，另外的一个字段称之为自然值；
+	
+	2.分区阶段和分组阶段只能和复合键中的自然键相关；就是需要控制分区和分组，自定义分区器个分组比较器，如果不定义分组比较器，在分组阶段会使用自定义的复合键中的compareTo比较，由于该compareTo方法即和自然键又和自然值有关，所以不能用于分组阶段；
+
+	3.排序阶段就实现了二次排序的过程，分区和分组阶段只是让相关联的数据能够进入同一个Reduce并且进入同一组；
+
+	4.先按照需求计算，然后再对结果数据进行二次排序，在二次排序时不能进行类分组函数的操作；
+
+	练习：计算每一年每个气象站的最大温度；
+
+join
+1.Map端的连接：
+	1.CompositeInputFormat，<T,TupleWritable>
+	2.对进行连接的数据的要求：
+		1.必须按照Key【要连接的标准】进行局部排序；
+		2.要进行连接的多个数据集必须有相同的数据分片；
+		3.要进行连接的多个数据集不能再被分割；
+		如果要连接的数据不符合以上规则，则需要预处理数据；
+
+2.Reduce端连接：二次排序功能；
+	1.通过要连接的Key添加标记构建复合键；
+	2.在排序阶段控制两个或者多个数据集的先后顺序；
+
+InputFormat和OutputFormat
+	TextInputFormat：
+	TextOutputFormat：
+
+	SequenceFileInputFormat：
+	SequenceFileOutputFormat：
+	
+
+	DBOutputFormat：读取HDFS集群中的数据，或者将MR程序处理之后的数据保存至数据库；
+	DBInputFormat：从数据库中读取数据；
+
+	Sqoop2：Sql 2 Hadoop
+
+JobControl：工作流：Oozie	Flink
+
+Job ->  ControlledJob
+
+1.从原始的天气数据【1992】中提取sid、temp；
+
+2.计算1992年每个气象站的最高温度；
+
+3.计算1992年每个气象站的平均温度；
+
+4.对于2和3作业的结果数据做join操作；
+
+YARN
+
+
+基于Hadoop的商品推荐系统
+
+基于行为的推荐：
+基于特征的推荐：
+
+协同过滤算法：
+	
+基于用户的推荐
+基于物品的推荐
+
+计算用户或者物品的相似度：
+	余弦夹角
+	共现矩阵
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
